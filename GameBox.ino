@@ -48,22 +48,60 @@ void loop() {
 
 }
 
-// Play lose melody
+// ================================> Play lose <============================================\\
 void LoseMelodyPlay() {
   // iterate over the notes of the melody:
   for (int thisNote = 0; thisNote < 8; thisNote++) {
 
-    // to calculate the note duration, take one second
-    // divided by the note type.
+    // to calculate the note duration, take one second divided by the note type.
     //e.g. quarter note = 1000 / 4, eighth note = 1000/8, etc.
-    int noteDuration = 1000 / noteDurations[thisNote];
-    tone(8, melody[thisNote], noteDuration);
-
-    // to distinguish the notes, set a minimum time between them.
-    // the note's duration + 30% seems to work well:
+    int noteDuration = 1000 / loseNoteDurations[thisNote];
+    tone(8, loseMelody[thisNote], noteDuration);
+    // to distinguish the notes, set a minimum time between them. The note's duration + 30% seems to work well:
     int pauseBetweenNotes = noteDuration * 1.30;
     delay(pauseBetweenNotes);
     // stop the tone playing:
     noTone(8);
   }
 }
+
+// ================================> Play random sound <============================================\\
+void RandomSelectionMelodyPlay() {
+
+  for (int thisNote = 0; thisNote < 8; thisNote++) {
+
+    int noteDuration = 1000 / randomNoteDurations[thisNote];
+    
+    tone(8, randomMelody[thisNote], noteDuration);
+    int pauseBetweenNotes = noteDuration * 1.30;
+    delay(pauseBetweenNotes);
+    noTone(8);
+  }
+}
+
+// ================================> Game Box is winner <============================================\\
+void GameBoxIsWinnerMelodyPlay() {
+  // iterate over the notes of the melody:
+  for (int thisNote = 0; thisNote < 8; thisNote++) {
+    
+    int noteDuration = 1000 / gbiwNoteDurations[thisNote];
+    
+    tone(8, gbiwMelody[thisNote], noteDuration);
+    int pauseBetweenNotes = noteDuration * 1.30;
+    delay(pauseBetweenNotes);
+    noTone(8);
+  }
+}
+
+// ================================> Player is winner <============================================\\
+void PlayerIsWinnerMelodyPlay() {
+
+  for (int thisNote = 0; thisNote < 8; thisNote++) {
+
+    int noteDuration = 1000 / piwNoteDurations[thisNote];
+    tone(8, piwMelody[thisNote], noteDuration);
+    delay(pauseBetweenNotes);
+    noTone(8);
+  }
+}
+
