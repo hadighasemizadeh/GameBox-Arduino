@@ -16,6 +16,10 @@ int gbiwNoteDurations[] = { 4, 8, 8, 4, 4, 4, 4, 4};
 // ================================> player is winner <================================\\
 int piwMelody[] = {NOTE_C4, NOTE_G3, NOTE_G3, NOTE_A3, NOTE_G3, 0, NOTE_B3, NOTE_C4};
 int piwNoteDurations[] = { 4, 8, 8, 4, 4, 4, 4, 4};
+
+// ================================> Game Box is winner <==============================\\
+int pioMelody[] = {NOTE_C4, NOTE_G3, NOTE_G3, NOTE_A3, NOTE_G3, 0, NOTE_B3, NOTE_C4};
+int piowNoteDurations[] = { 4, 8, 8, 4, 4, 4, 4, 4};
 // ====================================================================================\\
 
 int P1_OP;
@@ -74,6 +78,18 @@ void RandomSelectionMelodyPlay() {
     
     tone(8, randomMelody[thisNote], noteDuration);
     int pauseBetweenNotes = noteDuration * 1.30;
+    delay(pauseBetweenNotes);
+    noTone(8);
+  }
+}
+
+// ================================> Player is out <============================================\\
+void PlayerIsOutMelodyPlay() {
+
+  for (int thisNote = 0; thisNote < 8; thisNote++) {
+
+    int noteDuration = 1000 / pioNoteDurations[thisNote];
+    tone(8, pioMelody[thisNote], noteDuration);
     delay(pauseBetweenNotes);
     noTone(8);
   }
