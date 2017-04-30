@@ -114,28 +114,27 @@ void loop() {
       }else{
          digitalWrite(players_G_pins[nop], LOW);
       }
-    }
-    
-    BlinkAll();
-    
+    }  
     // Player push button to say I am ready no blink it
      for(int nop = 0; nop < numberPlayer; nop++){
-
-      if(IsButtonPushed(players_Btn_pins[nop])){
+       if(IsButtonPushed(players_Btn_pins[nop])){
+         CheckAndAddPlayerToList(players_Btn_pins[nop]);
          Serial.println(playersInGameList.size());
-        }
-//       if(digitalRead(players_G_pins[nop])== HIGH){
-//
-//        }
-     }
-
-////     if(prepared == numberPlayer){
-////        NOPMode       = false;
-////        selectingMode = true;
-////      }
-//      
-//      return;
+       }
+     }   
+    // Reduce NOP when player is ready but we reduce NOP
+     CheckAndDeletePlayerFromList(numberPlayer);
+     
+     // Blink in players
+     BlinkAllNotReady(numberPlayer);  
+         
+    // All players in then lets go and play the game
+    if(numberPlayer == playersInGameList.size()){  
+      NOPMode       = false;
+      selectingMode = true;
     }
+    return;
+  }
 
 //    if(selectingMode == true){
 //      SelectionMelodyPlay();
@@ -159,13 +158,37 @@ void loop() {
 //        for(){
 //         }
 //     }
-//  }
 }
 
-// is selected player in the GameBox player list
-void IsPlayerInList(){
-     for (SimpleList<int>::iterator itr = myList.begin(); itr != myList.end(); ++itr)
-    {
+// is selected player in the GameBox player list if it is not add it
+void CheckAndAddPlayerToList(int buttonPin){
+     for (SimpleList<int>::iterator itr = playersInGameList.begin(); itr != playersInGameList.end(); ++itr){
+       if((*itr) == buttonPin){
+          return;
+        }
+     }
+    playersInGameList.push_back(buttonPin);
+}
+
+// is selected player in the GameBox player list or not
+bool IsButtonPinInList(int buttonPin){
+   for (SimpleList<int>::iterator itr = playersInGameList.begin(); itr != playersInGameList.end(); ++itr){
+      if((*itr) == buttonPin){
+        return true;
+      }
+   }
+   return false;
+}
+
+// Delete ready player from list if player is ready but NOP reduced
+void CheckAndDeletePlayerFromList(int numberPlayerBl){
+  for (SimpleList<int>::iterator itr = playersInGameList.begin(); itr != playersInGameList.end();){
+    if((*itr) > numberPlayerBl-1){
+      itr = playersInGameList.erase(itr);
+      continue;
+    }
+    ++itr;
+  }
 }
 
 // Check the button is on or not
@@ -176,6 +199,24 @@ bool IsButtonPushed(int analogPin){
   return false;
 }
 
+//Blink all players' green LED's who are not ready
+void BlinkAllNotReady(int _playersIn){
+  delay(delayBlink); 
+  // All off
+   for(int i=0; i<_playersIn; i++){
+      if(IsButtonPinInList(players_Btn_pins[i])== false){
+        digitalWrite(players_G_pins[i], LOW); 
+      }
+    }
+    delay(delayBlink);
+    // All on
+    for(int i=0; i<_playersIn; i++){
+      if(IsButtonPinInList(players_Btn_pins[i])== false){
+        digitalWrite(players_G_pins[i], HIGH); 
+      }
+    }
+  }
+  
 //Blink all players' green LED
 void BlinkAll(){
   delay(delayBlink); 
@@ -218,6 +259,7 @@ void LoseMelodyPlay(){
     noTone(speaker_Op);
   }
 }
+
 // when payer win
 void WinMelodyPlay(){
   for (int thisWinNote = 0; thisWinNote < 8; thisWinNote++) {
@@ -230,6 +272,7 @@ void WinMelodyPlay(){
     noTone(speaker_Op);
   }
 }
+
 // when final winer selected
 void FinalWinMelodyPlay(){
     int FinalWinnerNoteSize = sizeof(finalMelody) / sizeof(int);
@@ -243,6 +286,7 @@ void FinalWinMelodyPlay(){
     noTone(speaker_Op);
   }
 }
+
 // when selecting new boss
 void RandomMelodyPlay(){
   for (int thisRNDNote = 0; thisRNDNote < 8; thisRNDNote++) {
@@ -255,6 +299,7 @@ void RandomMelodyPlay(){
     noTone(speaker_Op);
   }
 }
+
 // when selecting new boss
 void SelectionMelodyPlay(){
   int selectionSize = sizeof(selectionMelodyS) / sizeof(int);
