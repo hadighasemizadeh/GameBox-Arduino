@@ -44,21 +44,21 @@ int selectionempoDurations[]=
   18, 18, 18, 18, 18, 10, 10, 10, 10, 10, 10, 3, 3, 3};
   
 // players
-int Btn_p1       = 0;
-int led_green_p1 = 2;
-int led_red_p1   = 3;
+//int Btn_p1       = 0;
+//int led_green_p1 = 2;
+//int led_red_p1   = 3;
 
-int Btn_p2       = 1;
-int led_green_p2 = 4;
-int led_red_p2   = 5;
+//int Btn_p2       = 1;
+//int led_green_p2 = 4;
+//int led_red_p2   = 5;
 
-int Btn_p3       = 2;
-int led_green_p3 = 6;
-int led_red_p3   = 7;
+//int Btn_p3       = 2;
+//int led_green_p3 = 6;
+//int led_red_p3   = 7;
 
-int Btn_p4       = 3;
-int led_green_p4 = 8;
-int led_red_p4   = 9;
+//int Btn_p4       = 3;
+//int led_green_p4 = 8;
+//int led_red_p4   = 9;
 
 //int players_ins[]      = {0,0,0,0};
 SimpleList<int> playersInGameList;
@@ -73,40 +73,40 @@ int  playerSize    = 0;
 
 bool selectingMode = true;
 bool NOPMode       = true;
-bool GoGOGo        = false;
+bool newTurnMode   = false;
+bool readyGo       = false;
 
 // GameBox items
 int led_yellow_GB    = 10;
 int speaker_Op       = 11;
 int Potentiameter_Ip = 5;
+int counter    = 0;
 
 void setup() {
+ // Add to counter
+ RandomCounter();
  
  playerSize = sizeof(players_G_pins) / sizeof(int);
  playersInGameList.reserve(playerSize);
  
- pinMode(led_green_p1, OUTPUT);
- pinMode(led_red_p1,   OUTPUT);
-    
- pinMode(led_green_p2, OUTPUT);
- pinMode(led_red_p2,   OUTPUT);
-    
- pinMode(led_green_p3, OUTPUT);
- pinMode(led_red_p3,   OUTPUT);
-    
- pinMode(led_green_p4, OUTPUT);
- pinMode(led_red_p4,   OUTPUT);
-
- randomSeed(analogRead(0));
+ // Set green and red LEDs' pin on
+ for(int pin=0; pin<playerSize; pin++){
+   pinMode(players_G_pins[pin], OUTPUT);
+   pinMode(players_R_pins[pin], OUTPUT);
+ }
+ 
+// GameBox pin out
+ pinMode(led_yellow_GB,   OUTPUT);
  Serial.begin(9600);
 }
 
 void loop() {
   // State of input number of players
   if(NOPMode == true){
-    // Get number of player base
+    // Get number of player base and change random number
     int numberPlayer = analogRead(Potentiameter_Ip)/(1023/playerSize);
-
+    RandomCounter();
+     
     // Turn on player green LEDs base on potentiometer
     for(int nop = 0; nop < playerSize; nop++){
       if(nop <= (numberPlayer-1)){
@@ -121,7 +121,10 @@ void loop() {
          CheckAndAddPlayerToList(players_Btn_pins[nop]);
          Serial.println(playersInGameList.size());
        }
-     }   
+     }  
+     // Change random number
+     RandomCounter();  
+       
     // Reduce NOP when player is ready but we reduce NOP
      CheckAndDeletePlayerFromList(numberPlayer);
      
@@ -129,45 +132,66 @@ void loop() {
      BlinkAllNotReady(numberPlayer);  
          
     // All players in then lets go and play the game
-    if(numberPlayer == playersInGameList.size()){  
+    if(numberPlayer == playersInGameList.size()&& playersInGameList.size() > 1){ 
       NOPMode       = false;
       selectingMode = true;
     }
     return;
   }
-
-//    if(selectingMode == true){
-//      SelectionMelodyPlay();
-//    }
+  // Select a boss
+  if(selectingMode == true){
+    if(playersInGameList.size() > 1){
+      SelectionMelodyPlay();
+      // Turn new boss red LED's on
+      digitalWrite(players_R_pins[currentBoss], HIGH);
+    }else{
+      // Play GameBox is winner on
+      GameBoxIsBossMelodyPlay();
+      
+      currentBoss = -1;
+    }
+      // Blink and then turn GameBox yellow LED on
+      BlinkGameBox();
+      selectingMode = false;
+      newTurnMode   = true ;
+  }
+  // Main game logic start here
+  if(newTurnMode == true){
+    // if player push before boss
+    for (SimpleList<int>::iterator itr = playersInGameList.begin(); itr != playersInGameList.end();++itr){
+      
+    }
     
-//    else{
-//      digitalWrite(led_yellow_GB, HIGH);
-//      if(currentBoss == -1){
-//        Serial.println("What are you doing here??");
-//      }  
-//      // Push before or after game base
-//     for(int nop = 0; nop < playerSize; nop++){
-//      if(analogRead(nop)){
-//        digitalWrite(players_G_pins[nop], HIGH);  
-//      }
-//    }
-//
-//      
-//      else if(analogRead(currentBoss)){
-//        Serial.println("Pin number of boss!!" + currentBoss);
-//        for(){
-//         }
-//     }
+    // if player push after boss but late
+
+    // time for finding new bus
+    if(currentBoss>0){
+      
+    
+    }else{
+    
+    }
+  }
+}
+// Blink GameBox yellow LED
+void BlinkGameBox(){
+  for(int i=0; i<4; i++){
+    digitalWrite(led_yellow_GB, LOW);
+    delay(delayBlink);
+    
+    digitalWrite(led_yellow_GB, HIGH);
+    delay(delayBlink);
+  }
 }
 
 // is selected player in the GameBox player list if it is not add it
 void CheckAndAddPlayerToList(int buttonPin){
-     for (SimpleList<int>::iterator itr = playersInGameList.begin(); itr != playersInGameList.end(); ++itr){
-       if((*itr) == buttonPin){
-          return;
-        }
-     }
-    playersInGameList.push_back(buttonPin);
+   for (SimpleList<int>::iterator itr = playersInGameList.begin(); itr != playersInGameList.end(); ++itr){
+     if((*itr) == buttonPin){
+        return;
+      }
+   }
+  playersInGameList.push_back(buttonPin);
 }
 
 // is selected player in the GameBox player list or not
@@ -216,6 +240,18 @@ void BlinkAllNotReady(int _playersIn){
       }
     }
   }
+
+//Change blink state all players' green LED's
+void BlinkStateAll(bool state){
+  int _size = playersInGameList.size();
+   for(int i=0; i<_size; i++){
+     if(state == true){
+        digitalWrite(players_G_pins[i], HIGH); 
+     }else{
+        digitalWrite(players_G_pins[i], LOW); 
+     }
+    }
+  }
   
 //Blink all players' green LED
 void BlinkAll(){
@@ -259,7 +295,6 @@ void LoseMelodyPlay(){
     noTone(speaker_Op);
   }
 }
-
 // when payer win
 void WinMelodyPlay(){
   for (int thisWinNote = 0; thisWinNote < 8; thisWinNote++) {
@@ -275,7 +310,7 @@ void WinMelodyPlay(){
 
 // when final winer selected
 void FinalWinMelodyPlay(){
-    int FinalWinnerNoteSize = sizeof(finalMelody) / sizeof(int);
+  int FinalWinnerNoteSize = sizeof(finalMelody) / sizeof(int);
   for (int thisFinalWinNote = 0; thisFinalWinNote < FinalWinnerNoteSize; thisFinalWinNote++) {
 
     int finalDuration = 1000 / finalDurations[thisFinalWinNote];
@@ -287,8 +322,8 @@ void FinalWinMelodyPlay(){
   }
 }
 
-// when selecting new boss
-void RandomMelodyPlay(){
+// When GameBox is boss melody
+void GameBoxIsBossMelodyPlay(){
   for (int thisRNDNote = 0; thisRNDNote < 8; thisRNDNote++) {
 
     int randomNoteDuration = 1000 / randomNoteDurations[thisRNDNote];
@@ -300,13 +335,23 @@ void RandomMelodyPlay(){
   }
 }
 
-// when selecting new boss
+// Always adding number to use this for making random number
+void RandomCounter(){
+ if(counter<10000){
+    counter++;
+ }else{
+    counter = 0;
+ }
+}
+
+// When selecting new boss
 void SelectionMelodyPlay(){
   int selectionSize = sizeof(selectionMelodyS) / sizeof(int);
+  int _sizeP = playersInGameList.size();
   for (int thisNDNote = 0; thisNDNote < selectionSize; thisNDNote++) {
     // blink
-    AllLEDOffOn(false);
-    int pSelected = thisNDNote%4;
+    BlinkStateAll(false);
+    int pSelected = thisNDNote%_sizeP;
      digitalWrite(players_G_pins[pSelected], HIGH);
 
     int selectionempoDuration = 1000 / selectionempoDurations[thisNDNote];
@@ -316,9 +361,7 @@ void SelectionMelodyPlay(){
     delay(pauseBetweenelectNotes);
     noTone(speaker_Op);
   }
-  
-  selectingMode = false;
-  AllLEDOffOn(false);
-  currentBoss = random(3);
-  digitalWrite(players_G_pins[currentBoss], HIGH);
+  //Turn all player green LED on
+  BlinkStateAll(true);
+  currentBoss = counter%_sizeP;
 }
