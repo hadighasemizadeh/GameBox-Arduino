@@ -6,8 +6,8 @@ int loseMelody[] = {NOTE_C4, NOTE_G3, NOTE_G3, NOTE_A3, NOTE_G3, 0, NOTE_B3, NOT
 int loseNoteDurations[] = {4, 8, 8, 4, 4, 4, 4, 4};
 
 // Win melody data
-int winMelody[] = {NOTE_C4, NOTE_G3, NOTE_G3, NOTE_A3, NOTE_G3, 0, NOTE_B3, NOTE_C4};
-int winNoteDurations[] = {8, 8, 8, 8, 8, 8, 8, 8};
+int readyMelody[] = {NOTE_C4, NOTE_G3, NOTE_G3, NOTE_A3, NOTE_G3, 0, NOTE_B3, NOTE_C4};
+int readyNoteDurations[] = {8, 8, 8, 8, 8, 8, 8, 8};
 // Random melody data
 
 int randomMelody[] = {NOTE_C4, NOTE_G3, NOTE_G3, NOTE_A3, NOTE_G3, 0, NOTE_B3, NOTE_C4};
@@ -42,30 +42,13 @@ int selectionempoDurations[]=
 { 12, 12, 12, 12, 12, 12, 6, 3, 12, 12, 12, 12, 12, 12, 6, 3, 12, 12, 12, 12,
   12, 12, 6, 3, 12, 12, 12, 12, 12, 12, 6, 6, 18, 18, 18, 6, 6, 6, 6, 6, 6,18,
   18, 18, 18, 18, 18, 10, 10, 10, 10, 10, 10, 3, 3, 3};
-  
-// players
-//int Btn_p1       = 0;
-//int led_green_p1 = 2;
-//int led_red_p1   = 3;
 
-//int Btn_p2       = 1;
-//int led_green_p2 = 4;
-//int led_red_p2   = 5;
-
-//int Btn_p3       = 2;
-//int led_green_p3 = 6;
-//int led_red_p3   = 7;
-
-//int Btn_p4       = 3;
-//int led_green_p4 = 8;
-//int led_red_p4   = 9;
-
-//int players_ins[]      = {0,0,0,0};
 SimpleList<int> playersInGameList;
- 
-int players_R_pins[]   = {3,5,7,9};
-int players_G_pins[]   = {2,4,6,8};
+SimpleList<int> playersPushedBTNList;
+
 int players_Btn_pins[] = {0,1,2,3};
+int players_G_pins[]   = {2,4,6,8};
+int players_R_pins[]   = {3,5,7,9};
 
 int  delayBlink    = 300;
 int  currentBoss   = -1;
@@ -81,6 +64,7 @@ int led_yellow_GB    = 10;
 int speaker_Op       = 11;
 int Potentiameter_Ip = 5;
 int counter    = 0;
+int maxCounter = 10000;
 
 void setup() {
  // Add to counter
@@ -88,6 +72,7 @@ void setup() {
  
  playerSize = sizeof(players_G_pins) / sizeof(int);
  playersInGameList.reserve(playerSize);
+ playersPushedBTNList.reserve(playerSize);
  
  // Set green and red LEDs' pin on
  for(int pin=0; pin<playerSize; pin++){
@@ -119,7 +104,6 @@ void loop() {
      for(int nop = 0; nop < numberPlayer; nop++){
        if(IsButtonPushed(players_Btn_pins[nop])){
          CheckAndAddPlayerToList(players_Btn_pins[nop]);
-         Serial.println(playersInGameList.size());
        }
      }  
      // Change random number
@@ -154,23 +138,81 @@ void loop() {
       BlinkGameBox();
       selectingMode = false;
       newTurnMode   = true ;
+      // Counter change to zero in case that GameBox is boss
+      counter       = 0;
   }
   // Main game logic start here
   if(newTurnMode == true){
-    // if player push before boss
-    for (SimpleList<int>::iterator itr = playersInGameList.begin(); itr != playersInGameList.end();++itr){
-      
+    RandomCounter();
+    for (SimpleList<int>::iterator itr = playersInGameList.begin(); itr != playersInGameList.end();){
+      if(readyGo == false){
+         if(currentBoss >= 0){
+           // A player lose or boss order to play
+           if(IsButtonPushed((*itr)) == true && digitalRead(led_yellow_GB) == HIGH){
+              // Player pushed before boss
+              if((*itr)!= currentBoss ){
+                digitalWrite(players_G_pins[*itr],LOW);
+                digitalWrite(players_R_pins[*itr],HIGH);
+                itr = playersInGameList.erase(itr);
+                continue;
+               } else {
+                //Boss pushed button
+                 readyGo = true;
+                 // get last in list to set for order  
+                 playersPushedBTNList =  playersInGameList;
+                 Serial.println("Boss says push now!!");
+                 Serial.println(playersPushedBTNList.size());
+                 // Boss never lose
+                 playersPushedBTNList.erase(itr);
+              }
+           }
+        ++itr;
+        }else{
+          // Get random number
+          RandomCounter();
+          delay(delayBlink); 
+          // Push before GameBox order
+          if(IsButtonPushed((*itr)) == true){
+             digitalWrite(players_G_pins[*itr],LOW);
+             digitalWrite(players_R_pins[*itr],HIGH);
+             itr = playersInGameList.erase(itr);
+             continue;
+           }
+           ++itr;              
+          // Turn yellow LED Off and play now.
+          if(counter >(maxCounter/2)){
+            readyGo = true;
+            // get last in list to set for order  
+            playersPushedBTNList =  playersInGameList;
+          }
+          // Play Go sound
+          
+        }
+      }else{
+        // if player push after boss but late
+        if(currentBoss >= 0){
+          // There is a boss who commanded
+          for (SimpleList<int>::iterator itr = playersInGameList.begin(); itr != playersInGameList.end();){
+            if(playersPushedBTNList.size() == 1){
+              break;
+            }
+            // First push first out
+            if(IsButtonPushed((*itr)) == true){
+              itr = playersPushedBTNList.erase(itr);
+              continue;
+            }
+            ++itr;    
+          }
+        }else{
+          // GameBox command
+          
+        }
+      } 
     }
     
-    // if player push after boss but late
+
 
     // time for finding new bus
-    if(currentBoss>0){
-      
-    
-    }else{
-    
-    }
   }
 }
 // Blink GameBox yellow LED
@@ -252,36 +294,6 @@ void BlinkStateAll(bool state){
      }
     }
   }
-  
-//Blink all players' green LED
-void BlinkAll(){
-  delay(delayBlink); 
-  AllLEDOffOn(false);
-  delay(delayBlink); 
-  AllLEDOffOn(true);
-  }
-  
-//Blink all players green LED one bye one
-void BlinkAllOBO(){
-  int pSize = sizeof(players_G_pins) / sizeof(int);
-  for(int i=0; i<pSize; i++){
-    AllLEDOffOn(false);
-    digitalWrite(players_G_pins[i], HIGH);   
-    delay(delayBlink);
-   }
- }
-  
-// All LEDs off/On
-void AllLEDOffOn(bool state){
-  int pSize = sizeof(players_G_pins) / sizeof(int);
-  for(int i=0; i<pSize; i++){
-    if(state == false){
-      digitalWrite(players_G_pins[i], LOW); 
-     }else{
-      digitalWrite(players_G_pins[i], HIGH); 
-     }
-   }
- }
  
 // when payer lose it should play
 void LoseMelodyPlay(){
@@ -296,14 +308,14 @@ void LoseMelodyPlay(){
   }
 }
 // when payer win
-void WinMelodyPlay(){
-  for (int thisWinNote = 0; thisWinNote < 8; thisWinNote++) {
+void ReadyMelodyPlay(){
+  for (int thisReadyNote = 0; thisReadyNote < 8; thisReadyNote++) {
 
-    int winNoteDuration = 1000 / winNoteDurations[thisWinNote];
-    tone(speaker_Op, winMelody[thisWinNote], winNoteDuration);
+    int readyNoteDuration = 1000 / readyNoteDurations[thisReadyNote];
+    tone(speaker_Op, readyMelody[thisReadyNote], readyNoteDuration);
 
-    int pauseBetweenWinNotes = winNoteDuration * 1.30;
-    delay(pauseBetweenWinNotes);
+    int pauseBetweenReadyNotes = readyNoteDuration * 1.30;
+    delay(pauseBetweenReadyNotes);
     noTone(speaker_Op);
   }
 }
@@ -337,7 +349,7 @@ void GameBoxIsBossMelodyPlay(){
 
 // Always adding number to use this for making random number
 void RandomCounter(){
- if(counter<10000){
+ if(counter <= maxCounter){
     counter++;
  }else{
     counter = 0;
