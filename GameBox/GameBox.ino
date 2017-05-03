@@ -54,10 +54,11 @@ int  delayBlink    = 300;
 int  currentBoss   = -1;
 int  playerSize    = 0;
 
-bool selectingMode = true;
 bool NOPMode       = true;
+bool selectingMode = false;
 bool newTurnMode   = false;
 bool readyGo       = false;
+bool thereIsWinner = false;
 
 // GameBox items
 int led_yellow_GB    = 10;
@@ -147,16 +148,23 @@ void loop() {
     for (SimpleList<int>::iterator itr = playersInGameList.begin(); itr != playersInGameList.end();){
       if(readyGo == false){
          if(currentBoss >= 0){
-           // A player lose or boss order to play
-           if(IsButtonPushed((*itr)) == true && digitalRead(led_yellow_GB) == HIGH){
-              // Player pushed before boss
+           // A player pushed
+           if(IsButtonPushed((*itr)) == true){
+              
+              // That Player is not boss
               if((*itr)!= currentBoss ){
-                digitalWrite(players_G_pins[*itr],LOW);
-                digitalWrite(players_R_pins[*itr],HIGH);
-                itr = playersInGameList.erase(itr);
-                continue;
+                
+               // Send this player out of game
+               ThisPlayerOut(itr);
+               
+               // All player lose and game is over ??
+               GameOver(); 
+               
+               //If there is still opponent
+               continue;
+                
                } else {
-                //Boss pushed button
+                // That Player is boss
                  readyGo = true;
                  // get last in list to set for order  
                  playersPushedBTNList =  playersInGameList;
@@ -166,55 +174,109 @@ void loop() {
                  playersPushedBTNList.erase(itr);
               }
            }
-        ++itr;
+           ++itr;
         }else{
           // Get random number
           RandomCounter();
-          delay(delayBlink); 
           // Push before GameBox order
           if(IsButtonPushed((*itr)) == true){
-             digitalWrite(players_G_pins[*itr],LOW);
-             digitalWrite(players_R_pins[*itr],HIGH);
-             itr = playersInGameList.erase(itr);
-             continue;
-           }
-           ++itr;              
+                         
+            // Send this player out of game
+            ThisPlayerOut(itr);
+            
+            // All player lose and game is over ??
+            GameOver(); 
+            
+            //If there is still opponent
+            continue;
+         }
+          // All player lose and game is over ??
+          GameOver(); 
+          
+          ++itr; 
+          
           // Turn yellow LED Off and play now.
           if(counter >(maxCounter/2)){
             readyGo = true;
             // get last in list to set for order  
             playersPushedBTNList =  playersInGameList;
-          }
-          // Play Go sound
-          
+          }          
         }
       }else{
+          // Get random number
+          RandomCounter();
+          
         // if player push after boss but late
         if(currentBoss >= 0){
           // There is a boss who commanded
           for (SimpleList<int>::iterator itr = playersInGameList.begin(); itr != playersInGameList.end();){
-            if(playersPushedBTNList.size() == 1){
-              break;
-            }
+             
+            // All player lose and game is over ??
+            GameOver(); 
+             
             // First push first out
             if(IsButtonPushed((*itr)) == true){
               itr = playersPushedBTNList.erase(itr);
+              if(playersPushedBTNList.size() == 1){
+                // Delete last player
+                
+//                ThisPlayerOut(itr);
+                
+                Serial.println(*playersPushedBTNList.begin());
+                
+                selectingMode = true ;
+                newTurnMode   = false;
+                thereIsWinner = false;
+                return;
+              }
               continue;
             }
             ++itr;    
           }
         }else{
-          // GameBox command
-          
+          // if player push after GameBox boss but late
+          for (SimpleList<int>::iterator itr = playersInGameList.begin(); itr != playersInGameList.end();){
+
+            // First push first out
+            if(IsButtonPushed((*itr)) == true){
+              itr = playersPushedBTNList.erase(itr);
+              // All player lose and game is over ??
+              GameOver(); 
+            }
+            ++itr;    
+          }
         }
       } 
     }
+  }
+  
+  // Game finished and we have a winner
+  if(thereIsWinner == true){
     
+    // Turn off green and red pins
+    BlinkStateAll(false, players_G_pins);
+    BlinkStateAll(false, players_R_pins);
+    
+    // GameBox is winner
+    if(playersInGameList.size()==0){
+      // Melody and blinking for GameBox
+      FinalWinMelodyGBWPlay();
 
-
-    // time for finding new bus
+    // Player is winner
+    } else if(playersInGameList.size()==1){
+      // Melody and blinking for Player
+      FinalWinMelodyPWPlay();  
+    }else{
+      Serial.println(playersPushedBTNList.size());
+      Serial.println("Why I am Here!!??");
+    }
+    // Wait alittle
+    delay(delayBlink);    
+    // Reset GameBox
+    Reset();
   }
 }
+
 // Blink GameBox yellow LED
 void BlinkGameBox(){
   for(int i=0; i<4; i++){
@@ -283,14 +345,14 @@ void BlinkAllNotReady(int _playersIn){
     }
   }
 
-//Change blink state all players' green LED's
-void BlinkStateAll(bool state){
+//Change blink state all players' green or red LED's
+void BlinkStateAll(bool state, int ledArray[]){
   int _size = playersInGameList.size();
    for(int i=0; i<_size; i++){
      if(state == true){
-        digitalWrite(players_G_pins[i], HIGH); 
+        digitalWrite(ledArray[i], HIGH); 
      }else{
-        digitalWrite(players_G_pins[i], LOW); 
+        digitalWrite(ledArray[i], LOW); 
      }
     }
   }
@@ -320,16 +382,57 @@ void ReadyMelodyPlay(){
   }
 }
 
-// when final winer selected
-void FinalWinMelodyPlay(){
+// When final winer selected and is player
+void FinalWinMelodyPWPlay(){
   int FinalWinnerNoteSize = sizeof(finalMelody) / sizeof(int);
-  for (int thisFinalWinNote = 0; thisFinalWinNote < FinalWinnerNoteSize; thisFinalWinNote++) {
+  int _size = sizeof(players_G_pins) / sizeof(int);
 
+  bool _state = false;
+  SimpleList<int>::iterator _it = playersInGameList.begin();
+  
+  // Winner Red LED off
+   digitalWrite( players_R_pins[*_it],false);
+   
+  for (int thisFinalWinNote = 0; thisFinalWinNote < FinalWinnerNoteSize; thisFinalWinNote++) {
+    // Blink winner green LED
+    digitalWrite( players_G_pins[*_it],_state);
+    
+    // Blink others Red LED
+    for(int i=0;i<_size; i++){
+      auto it = playersInGameList.begin();
+      if(i != *_it){
+        digitalWrite(players_R_pins[i],_state);
+      }
+    }
+  
     int finalDuration = 1000 / finalDurations[thisFinalWinNote];
     tone(speaker_Op, finalMelody[thisFinalWinNote], finalDuration);
 
     int pauseBetweenFinalNotes = finalDuration * 1.30;
     delay(pauseBetweenFinalNotes);
+    _state = !_state;
+    noTone(speaker_Op);
+  }
+}
+
+// When final winer is GameBox
+void FinalWinMelodyGBWPlay(){
+  int FinalWinnerNoteSize = sizeof(finalMelody) / sizeof(int);
+  bool _state = false;
+  for (int thisFinalWinNote = 0; thisFinalWinNote < FinalWinnerNoteSize; thisFinalWinNote++) {
+    //Start blinking
+    BlinkStateAll(_state, players_R_pins);
+    digitalWrite(led_yellow_GB,_state);
+    
+    int finalDuration = 1000 / finalDurations[thisFinalWinNote];
+    tone(speaker_Op, finalMelody[thisFinalWinNote], finalDuration);
+
+    int pauseBetweenFinalNotes = finalDuration * 1.30;
+    delay(pauseBetweenFinalNotes);
+    
+    // Change state of blinking
+    _state = !_state;
+    
     noTone(speaker_Op);
   }
 }
@@ -360,20 +463,72 @@ void RandomCounter(){
 void SelectionMelodyPlay(){
   int selectionSize = sizeof(selectionMelodyS) / sizeof(int);
   int _sizeP = playersInGameList.size();
+   
+   SimpleList<int>::iterator itr = playersInGameList.begin();
+   bool _state = false;
   for (int thisNDNote = 0; thisNDNote < selectionSize; thisNDNote++) {
     // blink
-    BlinkStateAll(false);
-    int pSelected = thisNDNote%_sizeP;
-     digitalWrite(players_G_pins[pSelected], HIGH);
-
+    BlinkStateAll(_state,players_G_pins);
+    digitalWrite(players_G_pins[(*itr)],!_state);
+    
     int selectionempoDuration = 1000 / selectionempoDurations[thisNDNote];
     tone(speaker_Op, selectionMelodyS[thisNDNote], selectionempoDuration);
     
     int pauseBetweenelectNotes = selectionempoDuration * 1.30;
     delay(pauseBetweenelectNotes);
     noTone(speaker_Op);
+
+    ++itr;
+    // Reset iterator
+    if(itr ==  playersInGameList.end()){
+      itr = playersInGameList.begin();
+    } 
+    _state = !_state;    
   }
   //Turn all player green LED on
-  BlinkStateAll(true);
+  BlinkStateAll(true,players_G_pins);
   currentBoss = counter%_sizeP;
+}
+
+// Blink LED
+void ChangeStateArray(bool _state, int _array[], int _sizeOfArray){
+  for(int i=0; i<_sizeOfArray; i++){
+    digitalWrite(_array[i], _state);
+  }
+}
+
+// This player out
+void ThisPlayerOut(SimpleList<int>::iterator _ledPin){
+   digitalWrite(players_G_pins[*_ledPin],LOW);
+   digitalWrite(players_R_pins[*_ledPin],HIGH);
+   _ledPin = playersInGameList.erase(_ledPin);
+}
+
+// Game is over
+void GameOver(){
+  if(playersInGameList.size() <= 1){
+     newTurnMode   = false;
+     thereIsWinner = true;
+     return;
+  }
+}
+
+// Reset GameBox
+void Reset(){
+  playersInGameList.clear();
+  playersPushedBTNList.clear();
+
+  // All red and green LEDs off
+  ChangeStateArray(false, players_R_pins, sizeof(players_R_pins) / sizeof(int));
+  ChangeStateArray(false, players_G_pins, sizeof(players_G_pins) / sizeof(int));
+  
+  // gameBox yellow LED off
+  digitalWrite(led_yellow_GB,LOW);
+  
+  NOPMode       = true;
+  selectingMode = false;
+  newTurnMode   = false;
+  readyGo       = false;
+  thereIsWinner = false;
+  noTone(speaker_Op);
 }
