@@ -155,6 +155,8 @@ void loop() {
   if(newTurnMode == true){
     RandomCounter();
       if(readyGo == false){
+        // GameBox yellow LED is on
+        digitalWrite(led_yellow_GB, HIGH);
          // Boss is player
          if(currentBoss >= 0){
            for (SimpleList<int>::iterator itr = playersInGameList.begin(); itr != playersInGameList.end();){
@@ -195,6 +197,8 @@ void loop() {
               ThisPlayerOut(_itr1);          
               // All player lose and game is over ??
               GameOver();
+
+              return;
              }       
              // GameBox boss commanded
              if(counter >(maxCounter-100)){
@@ -206,6 +210,8 @@ void loop() {
         }
       // If ready to go true
       }else{
+        // GameBox yellow LED is off then push nooooooow
+        digitalWrite(led_yellow_GB, false);
         // Get random number
         RandomCounter(); 
         // if player push after boss but late
@@ -247,9 +253,32 @@ void loop() {
             }
             ++_itr2;
          }
+      // Boss is game boss and it commanded
+      }else{
+      for (SimpleList<int>::iterator _itr3 = playersInGameList.begin(); _itr3 != playersInGameList.end();++_itr3){
+        if(IsButtonPushed((*_itr3)) == true){
+          ++_itr3;
+          Serial.print("go to the next address and delete it. Then deleted is");
+          Serial.println(*_itr3);
+          _itr3 = playersInGameList.erase(_itr3);
+          selectingMode = false ;
+          newTurnMode   = false;
+          thereIsWinner = true;
+          return;
+        }
       } 
+    }
   }
 
+  // Delete remained player in checker list from min list
+  void DeleteLoserFromList(){
+    SimpleList<int>::iterator _itrLoser = playersPushedBTNList.begin();
+    for (SimpleList<int>::iterator _itr4 = playersInGameList.begin(); _itr4 != playersInGameList.end();++_itr4){
+      if((*_itr4)==(*_itrLoser)){
+      
+      }
+    }
+  }
   // Game finished and we have a winner
   if(thereIsWinner == true){
     
@@ -272,7 +301,7 @@ void loop() {
     }
     Serial.println("Finished!!");
     // Wait alittle
-    delay(delayBlink);    
+    delay(1000);    
     // Reset GameBox
     Reset();
   }
