@@ -126,17 +126,24 @@ void loop() {
   // Select a boss
   if(selectingMode == true){
     if(playersInGameList.size() > 1){
+      // Play random selection melody
       SelectionMelodyPlay();
+      //Turn all player green LED on
+      BlinkStateAll(true,players_G_pins); 
+      //Choose a boss
+      ChooseBoss();
       // Turn new boss red LED's on
       digitalWrite(players_R_pins[currentBoss], HIGH);
     }else{
       // Play GameBox is winner on
       GameBoxIsBossMelodyPlay();
-      
       currentBoss = -1;
+      // Turn GameBox boss yellow LED's on
+      digitalWrite(led_yellow_GB, HIGH);
     }
       // Blink and then turn GameBox yellow LED on
       BlinkGameBox();
+      NOPMode       = true;
       selectingMode = false;
       newTurnMode   = true ;
       // Counter change to zero in case that GameBox is boss
@@ -151,8 +158,7 @@ void loop() {
            for (SimpleList<int>::iterator itr = playersInGameList.begin(); itr != playersInGameList.end();){
              // A player pushed
              if(IsButtonPushed((*itr)) == true){
-                
-                // That Player is not boss
+                // That Player is not boss then he lose
                 if((*itr)!= currentBoss ){                 
                    // Send this player out of game
                    ThisPlayerOut(itr);                  
@@ -160,18 +166,18 @@ void loop() {
                    GameOver();                  
                    //If there is still opponent
                    continue; 
-                 } 
-            
-                 // Boss commanded
-                 if((*itr)== currentBoss ){
-                 // get last in list to set for order  
-                 playersPushedBTNList =  playersInGameList;
-                 Serial.println("Boss says push now!!");
-                 // Boss never lose
-                 itr = playersPushedBTNList.erase(itr);
-                 // That Player is boss
-                 readyGo = true;
-                 break;
+                   // Boss commanded
+                 } else {
+                   // get last in list to set for order  
+                   playersPushedBTNList =  playersInGameList;
+                   Serial.print("Player size is -> ");
+                   Serial.println(playersInGameList.size());
+                   Serial.println("Boss says push now!!");
+                   // Boss never lose
+                   itr = playersPushedBTNList.erase(itr);
+                   // That Player is boss
+                   readyGo = true;
+                   break;
                 }
             }
             ++itr;
@@ -186,7 +192,7 @@ void loop() {
               // Send this player out of game
               ThisPlayerOut(_itr1);          
               // All player lose and game is over ??
-              GameOver(); 
+              GameOver();
              }       
              // GameBox boss commanded
              if(counter >(maxCounter-100)){
@@ -218,13 +224,11 @@ void loop() {
               Serial.println(playersPushedBTNList.size());
                  
               if(playersPushedBTNList.size() == 1){                
-//                ThisPlayerOut(_itr2);
                 playersInGameList.erase(_itr2);
                 
-                Serial.print("playersInGameList size: ");
+                Serial.print("New playersInGameList size is: ");
                 Serial.println(playersInGameList.size());
                 
-                playersPushedBTNList.clear();
                 playersPushedBTNList = playersInGameList;
                 delay(6000);
                 
@@ -237,22 +241,10 @@ void loop() {
                 thereIsWinner = false;
                 return;
               }
-              continue;
+              continue;   
             }
-            ++_itr2;    
-          }
-        // if player push after GameBox boss but late
-        }else{
-          // if player push after GameBox boss but late
-          for (SimpleList<int>::iterator _itr3 = playersInGameList.begin(); _itr3 != playersInGameList.end();++_itr3){
-            // First push first out
-            if(IsButtonPushed((*_itr3)) == true){
-              _itr3 = playersPushedBTNList.erase(_itr3);
-              // All player lose and game is over ??
-              GameOver(); 
-            }  
-          }
-        }
+            ++_itr2;
+         }
       } 
   }
 
@@ -351,14 +343,6 @@ void BlinkAllNotReady(int _playersIn){
       }
     }
   }
-
-//Change blink state all players' green or red LED's
-void BlinkStateAll(bool state, int arrayLED[]){
-  
-  for (SimpleList<int>::iterator _it1 = playersInGameList.begin(); _it1 != playersInGameList.end();++_it1){
-      digitalWrite(arrayLED[*_it1], state); 
-  }
-}
  
 // when payer lose it should play
 void LoseMelodyPlay(){
@@ -464,14 +448,14 @@ void RandomCounter(){
 // When selecting new boss
 void SelectionMelodyPlay(){
   int selectionSize = sizeof(selectionMelodyS) / sizeof(int);
-  int _sizeP = playersInGameList.size()-1;
    
    SimpleList<int>::iterator itr = playersInGameList.begin();
    bool _state = false;
+   
   for (int thisNDNote = 0; thisNDNote < selectionSize; thisNDNote++) {
-    // blink
-    BlinkStateAll(_state,players_G_pins);
-    digitalWrite(players_G_pins[(*itr)],!_state);
+    // Turn off all LEDs andturn on requred one
+    BlinkStateAll(false,players_G_pins);
+    digitalWrite(players_G_pins[(*itr)],true);
     
     int selectionempoDuration = 1000 / selectionempoDurations[thisNDNote];
     tone(speaker_Op, selectionMelodyS[thisNDNote], selectionempoDuration);
@@ -479,20 +463,44 @@ void SelectionMelodyPlay(){
     int pauseBetweenelectNotes = selectionempoDuration * 1.30;
     delay(pauseBetweenelectNotes);
     noTone(speaker_Op);
-
+    
     ++itr;
     // Reset iterator
     if(itr ==  playersInGameList.end()){
       itr = playersInGameList.begin();
     } 
-    _state = !_state;    
   }
-  //Turn all player green LED on
-  BlinkStateAll(true,players_G_pins);
-  currentBoss = counter%_sizeP;
 }
 
-// Blink LED
+// Which player is boss
+void ChooseBoss(){
+    int _sizeP = playersInGameList.size()-1;
+    SimpleList<int>::iterator _itr = playersInGameList.begin();
+    
+    while ((counter%_sizeP) != (*_itr)) {
+      RandomCounter();
+      ++_itr;
+    }
+    currentBoss = (*_itr);
+}
+
+//Change blink state all players' green or red LED's
+void BlinkStateAll(bool state, int arrayLED[]){
+  for (SimpleList<int>::iterator _it7 = playersInGameList.begin(); _it7 != playersInGameList.end();++_it7){
+      digitalWrite(arrayLED[(*_it7)], state); 
+  }
+}
+
+//// Select boss base on list
+//int SelectBossFromPlayerList(int _randomNumber){
+//  for (SimpleList<int>::iterator _itr2 = playersPushedBTNList.begin(); _itr2 != playersPushedBTNList.end();++_itr2){ 
+//    if((*_itr2)==_randomNumber){
+//      break;
+//    }
+//  }  
+//}
+
+// Change state of LED
 void ChangeStateArray(bool _state, int _array[], int _sizeOfArray){
   for(int i=0; i<_sizeOfArray; i++){
     digitalWrite(_array[i], _state);
