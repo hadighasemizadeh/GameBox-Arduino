@@ -125,7 +125,7 @@ void loop() {
   }
   // Select a boss
   if(selectingMode == true){
-    if(playersInGameList.size() > 1){
+    if(playersInGameList.size() > 2){
       // Play random selection melody
       SelectionMelodyPlay();
       //Turn all player green LED on
@@ -134,12 +134,14 @@ void loop() {
       ChooseBoss();
       // Turn new boss red LED's on
       digitalWrite(players_R_pins[currentBoss], HIGH);
-    }else{
+    }else if(playersInGameList.size() == 2){
       // Play GameBox is winner on
       GameBoxIsBossMelodyPlay();
       currentBoss = -1;
       // Turn GameBox boss yellow LED's on
       digitalWrite(led_yellow_GB, HIGH);
+    } else{
+      Serial.println("Error: It is impossible situation!");
     }
       // Blink and then turn GameBox yellow LED on
       BlinkGameBox();
@@ -418,7 +420,6 @@ void FinalWinMelodyGBWPlay(){
     
     // Change state of blinking
     _state = !_state;
-    
     noTone(speaker_Op);
   }
 }
@@ -438,19 +439,18 @@ void GameBoxIsBossMelodyPlay(){
 
 // Always adding number to use this for making random number
 void RandomCounter(){
- if(counter <= maxCounter){
-    counter++;
- }else{
-    counter = 0;
- }
+   if(counter <= maxCounter){
+      counter++;
+   }else{
+      counter = 0;
+   }
 }
 
 // When selecting new boss
 void SelectionMelodyPlay(){
+
   int selectionSize = sizeof(selectionMelodyS) / sizeof(int);
-   
    SimpleList<int>::iterator itr = playersInGameList.begin();
-   bool _state = false;
    
   for (int thisNDNote = 0; thisNDNote < selectionSize; thisNDNote++) {
     // Turn off all LEDs andturn on requred one
@@ -474,14 +474,15 @@ void SelectionMelodyPlay(){
 
 // Which player is boss
 void ChooseBoss(){
-    int _sizeP = playersInGameList.size()-1;
-    SimpleList<int>::iterator _itr = playersInGameList.begin();
-    
-    while ((counter%_sizeP) != (*_itr)) {
-      RandomCounter();
-      ++_itr;
+  int _sizeP = playersInGameList.size()-1;
+  int index = 0;
+  
+  for (SimpleList<int>::iterator _itr = playersInGameList.begin(); _itr != list.end(); ++_itr, ++index){
+    if(index == counter%_sizeP){
+      currentBoss = (*_itr);
+      break;
     }
-    currentBoss = (*_itr);
+  }   
 }
 
 //Change blink state all players' green or red LED's
@@ -490,15 +491,6 @@ void BlinkStateAll(bool state, int arrayLED[]){
       digitalWrite(arrayLED[(*_it7)], state); 
   }
 }
-
-//// Select boss base on list
-//int SelectBossFromPlayerList(int _randomNumber){
-//  for (SimpleList<int>::iterator _itr2 = playersPushedBTNList.begin(); _itr2 != playersPushedBTNList.end();++_itr2){ 
-//    if((*_itr2)==_randomNumber){
-//      break;
-//    }
-//  }  
-//}
 
 // Change state of LED
 void ChangeStateArray(bool _state, int _array[], int _sizeOfArray){
