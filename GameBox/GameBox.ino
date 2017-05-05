@@ -87,10 +87,10 @@ void setup() {
 }
 
 void loop() {
-  // State of input number of players
+  /* =========================== Select number of player =========================== */
   if(NOPMode == true){
     // Get number of player base and change random number
-    int numberPlayer = analogRead(Potentiameter_Ip)/(1023/playerSize);
+    int numberPlayer = playerSize - analogRead(Potentiameter_Ip)/(1023/playerSize);
     RandomCounter();
      
     // Turn on player green LEDs base on potentiometer
@@ -123,8 +123,11 @@ void loop() {
     }
     return;
   }
-  // Select a boss
+  
+  TurnNext:
+  /* =========================== Select a boss =========================== */
   if(selectingMode == true){
+    Serial.println("Step random selection!!");
     if(playersInGameList.size() > 2){
       // Play random selection melody
       SelectionMelodyPlay();
@@ -147,21 +150,28 @@ void loop() {
       BlinkGameBox();
       NOPMode       = true;
       selectingMode = false;
+      readyGo       = false;
       newTurnMode   = true ;
       // Counter change to zero in case that GameBox is boss
       counter       = 0;
   }
+   /* =========================== New turn start here =========================== */
   // Main game logic start here
   if(newTurnMode == true){
     RandomCounter();
       if(readyGo == false){
+        Serial.println("Ready to go is false!");
         // GameBox yellow LED is on
         digitalWrite(led_yellow_GB, HIGH);
          // Boss is player
          if(currentBoss >= 0){
+          Serial.println("There is  boss!");
            for (SimpleList<int>::iterator itr = playersInGameList.begin(); itr != playersInGameList.end();){
              // A player pushed
              if(IsButtonPushed((*itr)) == true){
+              Serial.println(currentBoss);
+              Serial.println((*itr));
+              Serial.println("A player pushed button!");
                 // That Player is not boss then he lose
                 if((*itr)!= currentBoss ){                 
                    // Send this player out of game
@@ -171,45 +181,63 @@ void loop() {
                    //If there is still opponent
                    continue; 
                    // Boss commanded
-                 } else {
-                   // get last in list to set for order  
-                   playersPushedBTNList =  playersInGameList;
-                   Serial.print("Player size is -> ");
-                   Serial.println(playersInGameList.size());
-                   Serial.println("Boss says push now!!");
-                   // Boss never lose
-                   itr = playersPushedBTNList.erase(itr);
-                   // That Player is boss
-                   readyGo = true;
-                   break;
+                 } else if((*itr)== currentBoss ) {
+                 // That Player is boss
+                   readyGo = false;
+                   selectingMode = false;
+                 
+//                 Serial.println("boss pushed button!");
+//                 //get last in list to set for order  
+//                 playersPushedBTNList =  playersInGameList;
+//                 Serial.print("Player size is -> ");
+//                 Serial.println(playersInGameList.size());
+//                 Serial.println("Boss says push now!!");
+                 // Boss never lose
+//                 itr = playersPushedBTNList.erase(itr);
+//                 Serial.print("Out list is -> ");
+//                 Serial.println(playersPushedBTNList.size());
+                 return;
                 }
             }
             ++itr;
+            
+            if(itr == playersInGameList.end()){
+               itr = playersInGameList.begin();
+            }
         }
       // Boss is Game box
       }else{
-          // Get random number
-          RandomCounter();
-          for (SimpleList<int>::iterator _itr1 = playersInGameList.begin(); _itr1 != playersInGameList.end();++_itr1){
-            // Push before GameBox order
-            if(IsButtonPushed((*_itr1)) == true){              
-              // Send this player out of game
-              ThisPlayerOut(_itr1);          
-              // All player lose and game is over ??
-              GameOver();
-
-              return;
-             }       
-             // GameBox boss commanded
-             if(counter >(maxCounter-100)){
-               // get last in list to set for order  
-               playersPushedBTNList =  playersInGameList;
-               readyGo = true;
-             } 
+        Serial.println("Boss is GameBox!");
+        // Get random number
+        RandomCounter();
+        for (SimpleList<int>::iterator _itr1 = playersInGameList.begin(); _itr1 != playersInGameList.end();){
+          // Push before GameBox order
+          if(IsButtonPushed((*_itr1)) == true){              
+            // Send this player out of game
+            ThisPlayerOut(_itr1);          
+            // All player lose and game is over ??
+            GameOver();
+            return;
+           }
+                  
+           // GameBox boss commanded
+           if(counter >(maxCounter-100)){
+             // get last in list to set for order  
+             playersPushedBTNList =  playersInGameList;
+             readyGo = true;
+             return;
+            }
+            
+            ++_itr1; 
+            
+            if(_itr1 == playersInGameList.end()){
+               _itr1 = playersInGameList.begin();
+            } 
           }
         }
       // If ready to go true
       }else{
+        Serial.println("Ready to go is true!");
         // GameBox yellow LED is off then push nooooooow
         digitalWrite(led_yellow_GB, false);
         // Get random number
@@ -252,6 +280,9 @@ void loop() {
               continue;   
             }
             ++_itr2;
+            if(_itr2 == playersInGameList.end()){
+               _itr2 = playersInGameList.begin();
+            }
          }
       // Boss is game boss and it commanded
       }else{
@@ -269,19 +300,11 @@ void loop() {
       } 
     }
   }
-
-  // Delete remained player in checker list from min list
-  void DeleteLoserFromList(){
-    SimpleList<int>::iterator _itrLoser = playersPushedBTNList.begin();
-    for (SimpleList<int>::iterator _itr4 = playersInGameList.begin(); _itr4 != playersInGameList.end();++_itr4){
-      if((*_itr4)==(*_itrLoser)){
-      
-      }
-    }
-  }
-  // Game finished and we have a winner
+}
+ 
+  /* =========================== Game finished =========================== */
   if(thereIsWinner == true){
-    
+    Serial.println("There is a winner!");
     // Turn off green and red pins
     BlinkStateAll(false, players_G_pins);
     BlinkStateAll(false, players_R_pins);
@@ -307,13 +330,20 @@ void loop() {
   }
 }
 
+//Delete remained player in checker list from min list
+void DeleteLoserFromList(){
+  SimpleList<int>::iterator _itrLoser = playersPushedBTNList.begin();
+  for (SimpleList<int>::iterator _itr4 = playersInGameList.begin(); _itr4 != playersInGameList.end();++_itr4){
+    if((*_itr4)==(*_itrLoser)){
+    
+    }
+  }
+}
+  
 // Blink GameBox yellow LED
 void BlinkGameBox(){
-  for(int i=0; i<4; i++){
-    digitalWrite(led_yellow_GB, LOW);
-    delay(delayBlink);
-    
-    digitalWrite(led_yellow_GB, HIGH);
+  for(int i=0; i<14; i++){
+    digitalWrite(led_yellow_GB, i%2);
     delay(delayBlink);
   }
 }
@@ -506,7 +536,7 @@ void ChooseBoss(){
   int _sizeP = playersInGameList.size()-1;
   int index = 0;
   
-  for (SimpleList<int>::iterator _itr = playersInGameList.begin(); _itr != list.end(); ++_itr, ++index){
+  for (SimpleList<int>::iterator _itr = playersInGameList.begin(); _itr != playersInGameList.end(); ++_itr, ++index){
     if(index == counter%_sizeP){
       currentBoss = (*_itr);
       break;
