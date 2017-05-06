@@ -43,11 +43,8 @@ int selectionempoDurations[]=
   12, 12, 6, 3, 12, 12, 12, 12, 12, 12, 6, 6, 18, 18, 18, 6, 6, 6, 6, 6, 6,18,
   18, 18, 18, 18, 18, 10, 10, 10, 10, 10, 10, 3, 3, 3};
 
-//SimpleList<int> playersInGameList;
-//SimpleList<int> playersPushedBTNList;
-
-int players_In_game[]   = {-1,-1,-1,-1};
-int players_GoOut_game[]= {-1,-1,-1,-1};
+SimpleList<int> playersInGameList;
+SimpleList<int> playersPushedBTNList;
 
 int players_Btn_pins[] = {0,1,2,3};
 int players_G_pins[]   = {2,4,6,8};
@@ -75,7 +72,9 @@ void setup() {
  RandomCounter();
  
  playerSize = sizeof(players_G_pins) / sizeof(int);
-
+ playersInGameList.reserve(playerSize);
+ playersPushedBTNList.reserve(playerSize);
+ 
  // Set green and red LEDs' pin on
  for(int pin=0; pin<playerSize; pin++){
    pinMode(players_G_pins[pin], OUTPUT);
@@ -105,6 +104,11 @@ void loop() {
     // Player push button to say I am ready no blink it
      for(int nop = 0; nop < numberPlayer; nop++){
        if(IsButtonPushed(players_Btn_pins[nop])){
+          if(CheckAndAdd(players_Btn_pins[nop])==false){
+            Serial.print("players added: ");
+            Serial.println(players_Btn_pins[nop]);
+            playersInGameList.push_back(players_Btn_pins[nop]);
+          }
        }
      }  
      // Change random number
@@ -191,10 +195,10 @@ void loop() {
                     Serial.println(playersInGameList.size());
                     Serial.println("Boss says push now!!");
                     // Boss never lose
-                    itr = playersPushedBTNList.erase(itr);
+                    DeleteFromOutList(*itr);
                     
                     PrintList(playersInGameList);
-                    PrintList(playersPushedBTNList);
+//                    PrintList(playersPushedBTNList);
                     Serial.print("Out list is -> ");
                     Serial.println(playersPushedBTNList.size());
                     
@@ -251,30 +255,7 @@ void loop() {
           // There is a boss who commanded
           for (SimpleList<int>::iterator _itr2 = playersPushedBTNList.begin(); _itr2 != playersPushedBTNList.end();){            
             // First push first out
-            if(IsButtonPushed((*_itr2)) == true && (*_itr2)!= currentBoss){
-              if(playersPushedBTNList.size() == 1){                   
-                Serial.print("This player lose: "); 
-                Serial.println(*_itr2);   
-                DeleteLoser(*_itr2);              
-                Serial.print("New playersInGameList size is: ");
-                Serial.println(playersInGameList.size());
-                
-                playersPushedBTNList = playersInGameList;
-                
-                Serial.print("New playersPushedBTNList size is: ");
-                Serial.println(playersPushedBTNList.size());
-                delay(4000);
-                
-                // All Red green off
-                 ChangeStateArray(false, players_R_pins, sizeof(players_R_pins) / sizeof(int));
-                 ChangeStateArray(false, players_G_pins, sizeof(players_G_pins) / sizeof(int));
-                  
-                selectingMode = true ;
-                newTurnMode   = false;
-                thereIsWinner = false;
-                return;
-              }
-              
+            if(IsButtonPushed((*_itr2)) == true && (*_itr2)!= currentBoss){ 
               Serial.println("=====================================");
               Serial.print("boss is: ");
               Serial.println(currentBoss);
@@ -292,10 +273,33 @@ void loop() {
               
               continue;   
             }
-            ++_itr2;
-            if(_itr2 == playersInGameList.end()){
-               _itr2 = playersInGameList.begin();
-            }
+            
+            if(playersPushedBTNList.size() == 1){                   
+            Serial.print("This player lose: "); 
+            Serial.println(*_itr2);   
+            DeleteLoser(*_itr2);              
+            Serial.print("New playersInGameList size is: ");
+            Serial.println(playersInGameList.size());
+            
+            playersPushedBTNList = playersInGameList;
+            
+            Serial.print("New playersPushedBTNList size is: ");
+            Serial.println(playersPushedBTNList.size());
+            delay(4000);
+            
+            // All Red green off
+             ChangeStateArray(false, players_R_pins, sizeof(players_R_pins) / sizeof(int));
+             ChangeStateArray(false, players_G_pins, sizeof(players_G_pins) / sizeof(int));
+              
+            selectingMode = true ;
+            newTurnMode   = false;
+            thereIsWinner = false;
+            return;
+          }
+          ++_itr2;
+          if(_itr2 == playersInGameList.end()){
+             _itr2 = playersInGameList.begin();
+          }
          }
       // Boss is game boss and it commanded
       }else{
@@ -378,6 +382,42 @@ void FillWithPlayerList(){
       ++itr1;
   }
  }
+
+// Delete specific item from playersPush
+void DeleteFromOutList(int buttonPin){
+  for (SimpleList<int>::iterator itr = playersPushedBTNList.begin(); itr != playersPushedBTNList.end(); ++itr){
+    if((*itr) == buttonPin){
+      playersPushedBTNList.erase(itr);
+      return;
+    }
+  }
+ }
+// Add unrpeated item
+bool CheckAndAdd(int buttonPin){
+  for (SimpleList<int>::iterator itr = playersInGameList.begin(); itr != playersInGameList.end();++itr){
+    if((*itr) == buttonPin){
+      return true;
+    }
+  }
+  return false;
+}
+
+
+//// Add unrpeated item
+//void CheckAndAdd(int buttonPin){
+////  PrintList(playersInGameList);
+//  SimpleList<int>::iterator itr;
+//  for (itr = playersInGameList.begin(); itr != playersInGameList.end();++itr){
+//    if((*itr) == buttonPin){
+//      Serial.print  ("OOOOOOOO!!");
+//      return;
+//    }
+//  }
+//    Serial.print  ("Repeated!!");
+//    Serial.println((*itr));
+//    playersInGameList.push_back((*itr));
+//}
+
 // Delete ready player from list if player is ready but NOP reduced
 void CheckAndDeletePlayerFromList(int numberPlayerBl){
   for (SimpleList<int>::iterator itr = playersInGameList.begin(); itr != playersInGameList.end();){
@@ -386,13 +426,6 @@ void CheckAndDeletePlayerFromList(int numberPlayerBl){
       continue;
     }
     ++itr;
-  }
-  for (SimpleList<int>::iterator itr1 = playersPushedBTNList.begin(); itr1 != playersPushedBTNList.end();){
-    if((*itr1) > numberPlayerBl-1){
-      itr1 = playersPushedBTNList.erase(itr1);
-      continue;
-    }
-    ++itr1;
   }
 }
 
@@ -629,72 +662,4 @@ void PrintList(SimpleList<int> myList){
        Serial.print("Item: ");
        Serial.println(*_itsa); 
   }
-}
-
-// Make player empty
-void ClearInPlayers(){ 
-  int _psize = sizeof(players_In_game) / sizeof(int);
-  for (int i=0; i<_psize;i++ ){
-    players_In_game[i] = -1;
-  }
-}
-
-// Clear in player
-void ClearOutPlayers(){
-  int _psize = sizeof(players_GoOut_game) / sizeof(int);
-  for (int i=0; i<_psize;i++ ){
-    players_GoOut_game[i] = -1;
-  }
-}
-
-// Fill out with in player
-void FillWhoIsOut(){ 
-  int _psize = sizeof(players_GoOut_game) / sizeof(int);
-  for (int i=0; i<_psize;i++ ){
-    players_GoOut_game[i] = players_In_game[i] ;
-  }
-}
-
-// Add in index
-void AddInIndex(int index, int buttonPin){ 
-  int _psize = sizeof(players_In_game) / sizeof(int);
-  if(index > _psize){
-    Serial.println("Error: it is bigger than expected");
-  }else{
-    players_In_game[index] = buttonPin ;
-  }
-}
-
-// Number of in players
-int NumberOfInPlayers(){
-  int _psize = sizeof(players_In_game) / sizeof(int);
-  int sum = 0;
-  for (int i=0; i<_psize; i++ ){
-    if(players_In_game[i] != -1){
-      sum++;
-    }
-  }
-  return sum;
-}
-
-// Number of out players
-int NumberOfOutPlayers(){
-  int _psize = sizeof(players_GoOut_game) / sizeof(int);
-  int sum = 0;
-  for (int i=0; i<_psize; i++ ){
-    if(players_GoOut_game[i] != -1){
-      sum++;
-    }
-  }
-  return sum;
-}
-
-int SearchInPlayer(int searchPin){
-  int _psize = sizeof(players_GoOut_game) / sizeof(int);
-  for (int i=0; i<_psize; i++ ){
-    if(players_In_game[i] == searchPin){
-      return i;
-    }
-  }
-  return -1;
 }
