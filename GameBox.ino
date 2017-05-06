@@ -194,11 +194,14 @@ void loop() {
                     Serial.print("Player size is -> ");
                     Serial.println(playersInGameList.size());
                     Serial.println("Boss says push now!!");
+                    
                     // Boss never lose
                     DeleteFromOutList(*itr);
                     
                     PrintList(playersInGameList);
-//                    PrintList(playersPushedBTNList);
+                    Serial.println("<=================================>");
+                    PrintList(playersPushedBTNList);
+                    
                     Serial.print("Out list is -> ");
                     Serial.println(playersPushedBTNList.size());
                     
@@ -277,11 +280,15 @@ void loop() {
             if(playersPushedBTNList.size() == 1){                   
             Serial.print("This player lose: "); 
             Serial.println(*_itr2);   
-            DeleteLoser(*_itr2);              
+            DeleteLoser(*_itr2);   
+
+            PrintList(playersInGameList);
+            Serial.println("<=================================>");
+            PrintList(playersPushedBTNList);
+                    
             Serial.print("New playersInGameList size is: ");
             Serial.println(playersInGameList.size());
-            
-            playersPushedBTNList = playersInGameList;
+
             
             Serial.print("New playersPushedBTNList size is: ");
             Serial.println(playersPushedBTNList.size());
@@ -376,10 +383,10 @@ bool IsButtonPinInList(int buttonPin){
 }
 // Fill with list of in game players
 void FillWithPlayerList(){
-  SimpleList<int>::iterator itr1 = playersPushedBTNList.begin();
+  
+  playersPushedBTNList.clear();
   for (SimpleList<int>::iterator itr = playersInGameList.begin(); itr != playersInGameList.end(); ++itr){
       playersPushedBTNList.push_back(*itr);
-      ++itr1;
   }
  }
 
