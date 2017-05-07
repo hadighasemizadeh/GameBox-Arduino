@@ -1,15 +1,6 @@
 #include "pitches.h"
 #include "SimpleList.h"
 
-// Lose melody data
-int loseMelody[] = {NOTE_C4, NOTE_G3, NOTE_G3, NOTE_A3, NOTE_G3, 0, NOTE_B3, NOTE_C4};
-int loseNoteDurations[] = {4, 8, 8, 4, 4, 4, 4, 4};
-
-// Win melody data
-int readyMelody[] = {NOTE_C4, NOTE_G3, NOTE_G3, NOTE_A3, NOTE_G3, 0, NOTE_B3, NOTE_C4};
-int readyNoteDurations[] = {8, 8, 8, 8, 8, 8, 8, 8};
-// Random melody data
-
 int randomMelody[] = {NOTE_C4, NOTE_G3, NOTE_G3, NOTE_A3, NOTE_G3, 0, NOTE_B3, NOTE_C4};
 int randomNoteDurations[] = {4, 4, 4, 4, 4, 4, 4, 4};
 
@@ -139,17 +130,17 @@ void loop() {
       ChooseBoss();
       // Turn new boss red LED's on
       digitalWrite(players_R_pins[currentBoss], HIGH);
+      // Blink and then turn GameBox yellow LED on
+      BlinkGameBox();
+      
     }else if(playersInGameList.size() == 2){
-      // Play GameBox is winner on
+      BlinkStateAll(true,players_G_pins); 
       GameBoxIsBossMelodyPlay();
       currentBoss = -1;
-      // Turn GameBox boss yellow LED's on
-      digitalWrite(led_yellow_GB, HIGH);
+      
     } else{
       Serial.println("Error: It is impossible situation!");
     }
-      // Blink and then turn GameBox yellow LED on
-      BlinkGameBox();
       NOPMode       = false;
       selectingMode = false;
       readyGo       = false;
@@ -208,7 +199,6 @@ void loop() {
                     // That Player is boss
                     readyGo = true;
                     selectingMode = false;
-                
                     break;
                 }
             }
@@ -220,9 +210,10 @@ void loop() {
       // Boss is Game box
       }else{
         Serial.println("Boss is GameBox!");
-        // Get random number
-        RandomCounter();
         for (SimpleList<int>::iterator _itr1 = playersInGameList.begin(); _itr1 != playersInGameList.end();){
+          // Get random number
+          RandomCounter();
+          
           // Push before GameBox order
           if(IsButtonPushed((*_itr1)) == true){              
             // Send this player out of game
@@ -233,11 +224,13 @@ void loop() {
            }
                   
            // GameBox boss commanded
-           if(counter >(maxCounter-100)){
+           if(counter >(maxCounter/2)){
+             Serial.print("GameBox says gooooooooooooo");
              // get last in list to set for order  
              FillWithPlayerList();
              readyGo = true;
-             return;
+             selectingMode = false;
+             break;
             }
             
             ++_itr1; 
@@ -292,12 +285,13 @@ void loop() {
             
             Serial.print("New playersPushedBTNList size is: ");
             Serial.println(playersPushedBTNList.size());
-            delay(4000);
-            
-            // All Red green off
-             ChangeStateArray(false, players_R_pins, sizeof(players_R_pins) / sizeof(int));
-             ChangeStateArray(false, players_G_pins, sizeof(players_G_pins) / sizeof(int));
-              
+
+            // All red green off
+            ChangeStateArray(false, players_R_pins, sizeof(players_R_pins) / sizeof(int));
+            ChangeStateArray(false, players_G_pins, sizeof(players_G_pins) / sizeof(int));
+
+            LoseMelodyPlay(*_itr2);
+
             selectingMode = true ;
             newTurnMode   = false;
             thereIsWinner = false;
@@ -310,12 +304,30 @@ void loop() {
          }
       // Boss is game boss and it commanded
       }else{
-      for (SimpleList<int>::iterator _itr3 = playersInGameList.begin(); _itr3 != playersInGameList.end();++_itr3){
+      for (SimpleList<int>::iterator _itr3 = playersPushedBTNList.begin(); _itr3 != playersPushedBTNList.end();++_itr3){
         if(IsButtonPushed((*_itr3)) == true){
-          ++_itr3;
-          Serial.print("go to the next address and delete it. Then deleted is");
-          Serial.println(*_itr3);
-          _itr3 = playersInGameList.erase(_itr3);
+         Serial.print((*_itr3));
+         
+         playersInGameList.clear();
+         playersInGameList.clear();
+
+         playersPushedBTNList.push_back(*_itr3);
+         playersInGameList.push_back(*_itr3);
+          
+          Serial.print("New playersInGameList size is: ");
+          Serial.println(playersInGameList.size());
+
+          PrintList(playersInGameList);
+          Serial.println("<=================================>");
+          PrintList(playersPushedBTNList);
+            
+          Serial.print("New playersPushedBTNList size is: ");
+          Serial.println(playersPushedBTNList.size());
+          
+          // All red green off
+          ChangeStateArray(false, players_R_pins, sizeof(players_R_pins) / sizeof(int));
+          ChangeStateArray(false, players_G_pins, sizeof(players_G_pins) / sizeof(int));
+            
           selectingMode = false ;
           newTurnMode   = false;
           thereIsWinner = true;
@@ -390,6 +402,15 @@ void FillWithPlayerList(){
   }
  }
 
+// Fill with remained list
+void FillWithRemainedList(){
+  
+  playersInGameList.clear();
+  for (SimpleList<int>::iterator itr = playersPushedBTNList.begin(); itr != playersPushedBTNList.end(); ++itr){
+      playersInGameList.push_back(*itr);
+  }
+ }
+ 
 // Delete specific item from playersPush
 void DeleteFromOutList(int buttonPin){
   for (SimpleList<int>::iterator itr = playersPushedBTNList.begin(); itr != playersPushedBTNList.end(); ++itr){
@@ -408,22 +429,6 @@ bool CheckAndAdd(int buttonPin){
   }
   return false;
 }
-
-
-//// Add unrpeated item
-//void CheckAndAdd(int buttonPin){
-////  PrintList(playersInGameList);
-//  SimpleList<int>::iterator itr;
-//  for (itr = playersInGameList.begin(); itr != playersInGameList.end();++itr){
-//    if((*itr) == buttonPin){
-//      Serial.print  ("OOOOOOOO!!");
-//      return;
-//    }
-//  }
-//    Serial.print  ("Repeated!!");
-//    Serial.println((*itr));
-//    playersInGameList.push_back((*itr));
-//}
 
 // Delete ready player from list if player is ready but NOP reduced
 void CheckAndDeletePlayerFromList(int numberPlayerBl){
@@ -463,28 +468,15 @@ void BlinkAllNotReady(int _playersIn){
   }
  
 // when payer lose it should play
-void LoseMelodyPlay(){
-  for (int thisNote = 0; thisNote < 8; thisNote++) {
-
-    int loseNoteDuration = 1000 / loseNoteDurations[thisNote];
-    tone(speaker_Op, loseMelody[thisNote], loseNoteDuration);
-
-    int pauseBetweenloseNotes = loseNoteDuration * 1.30;
-    delay(pauseBetweenloseNotes);
-    noTone(speaker_Op);
+void LoseMelodyPlay(int redPinLoser){
+  // play melody for loser
+  for(int i=0; i<12; i++){
+    digitalWrite(players_R_pins[redPinLoser],i%2);
+    digitalWrite(speaker_Op, i%2);
+    delay(500);
   }
-}
-// when payer win
-void ReadyMelodyPlay(){
-  for (int thisReadyNote = 0; thisReadyNote < 8; thisReadyNote++) {
-
-    int readyNoteDuration = 1000 / readyNoteDurations[thisReadyNote];
-    tone(speaker_Op, readyMelody[thisReadyNote], readyNoteDuration);
-
-    int pauseBetweenReadyNotes = readyNoteDuration * 1.30;
-    delay(pauseBetweenReadyNotes);
-    noTone(speaker_Op);
-  }
+  digitalWrite(players_R_pins[redPinLoser],false);
+  digitalWrite(speaker_Op, false);
 }
 
 // When final winer selected and is player
@@ -497,6 +489,8 @@ void FinalWinMelodyPWPlay(){
   
   // Winner Red LED off
    digitalWrite( players_R_pins[*_it],false);
+   Serial.println("Winner is: ");
+   Serial.println(*_it);
    
   for (int thisFinalWinNote = 0; thisFinalWinNote < FinalWinnerNoteSize; thisFinalWinNote++) {
     // Blink winner green LED
@@ -542,15 +536,18 @@ void FinalWinMelodyGBWPlay(){
 
 // When GameBox is boss melody
 void GameBoxIsBossMelodyPlay(){
+  bool _state = false;
   for (int thisRNDNote = 0; thisRNDNote < 8; thisRNDNote++) {
-
+    digitalWrite(led_yellow_GB, _state);
     int randomNoteDuration = 1000 / randomNoteDurations[thisRNDNote];
     tone(speaker_Op, randomMelody[thisRNDNote], randomNoteDuration);
 
     int pauseBetweenrandomNotes = randomNoteDuration * 1.30;
     delay(pauseBetweenrandomNotes);
     noTone(speaker_Op);
+    _state = !_state;
   }
+  digitalWrite(led_yellow_GB, HIGH);
 }
 
 // Always adding number to use this for making random number
